@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 精准拼豆图纸生成器</title>
+<style>
+:root{
+  --bg:#1a0a1e; --bg2:#2a0a2e; --card:#2d1238; --card2:#3a1a48;
+  --accent:#ff4488; --accent2:#ff8800; --text:#fff; --text2:#ccc;
+  --border:#4a2858; --ok:#44aa44; --err:#e44;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(135deg,var(--bg),var(--bg2));color:var(--text);min-height:100vh}
+.app{max-width:1200px;margin:0 auto;padding:16px}
+.header{text-align:center;padding:20px 0}
+.header h1{font-size:26px;letter-spacing:1px}
+.header .sub{color:var(--text2);font-size:13px;margin-top:6px}
+
+/* Login */
+.login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh}
+.login-box{background:var(--card);border-radius:16px;padding:36px 32px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.login-box h2{text-align:center;margin-bottom:24px;font-size:20px}
+.login-box .field{margin-bottom:16px}
+.login-box label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px}
+.login-box input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:15px}
+.login-box input:focus{outline:none;border-color:var(--accent)}
+.login-box .hint{text-align:center;font-size:12px;color:var(--text2);margin-top:12px}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:.2s}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn2{background:var(--card2);border:1px solid var(--border);padding:10px 20px;border-radius:8px;color:var(--text);cursor:pointer;font-size:14px;transition:.2s}
+.btn2:hover{border-color:var(--accent)}
+.btn-sm{padding:8px 16px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;cursor:pointer}
+.btn-sm.secondary{background:var(--card2);border:1px solid var(--border)}
+.login-err{color:var(--err);font-size:13px;text-align:center;margin-top:10px;display:none}
+
+/* Toolbar */
+.toolbar{background:var(--card);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.toolbar .grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar label{font-size:13px;color:var(--text2);white-space:nowrap}
+.toolbar select,.toolbar input[type=number],.toolbar input[type=range]{padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px}
+.toolbar input[type=range]{padding:0}
+.toolbar .upload-btn{background:var(--accent);color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;border:none}
+.toolbar .upload-btn:hover{background:var(--accent2)}
+#fileInput{display:none}
+
+/* Main layout */
+.main{display:flex;gap:16px;flex-wrap:wrap}
+.preview-panel{flex:1;min-width:300px}
+.preview-panel canvas{width:100%;border-radius:8px;background:#111}
+.result-panel{flex:2;min-width:400px;overflow:auto}
+
+/* Stats */
+.stats{background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px}
+.stats h3{font-size:16px;margin-bottom:12px}
+.stats .total{font-size:28px;font-weight:700;color:var(--accent2)}
+.stats .color-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.stats .color-item{display:flex;align-items:center;gap:6px;background:var(--card2);padding:6px 10px;border-radius:6px;font-size:13px}
+.stats .color-swatch{width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,.2)}
+.stats .count{font-weight:600;color:var(--accent2)}
+
+/* Chart canvas */
+.chart-wrap{background:#111;border-radius:8px;overflow:auto;max-height:70vh;padding:8px}
+#chartCanvas{display:block}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:12px 24px;font-size:14px;z-index:999;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+
+.hidden{display:none!important}
+
+.footer{text-align:center;color:var(--text2);font-size:12px;padding:20px 0;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<div class="header">
+  <h1>🎯 精准拼豆图纸生成器</h1>
+  <div class="sub">图片转像素图 · 自动算珠子用量 · 色号编码齐全 · 高清打印</div>
+</div>
+
+<!-- Login Screen -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>🔐 卡密登录</h2>
+    <div class="field">
+      <label>账号</label>
+      <input type="text" id="loginUser" placeholder="输入账号">
+    </div>
+    <div class="field">
+      <label>卡密</label>
+      <input type="password" id="loginKey" placeholder="输入卡密">
+    </div>
+    <button class="btn" id="loginBtn">进入系统</button>
+    <div class="hint">使用卡密，自动发货，全程自助</div>
+    <div class="login-err" id="loginErr">账号或卡密错误，请重试</div>
+  </div>
+</div>
+
+<!-- Main App (hidden until login) -->
+<div id="mainApp" class="hidden">
+
+  <div class="toolbar">
+    <div class="grp">
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📤 上传图片</button>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div class="grp">
+      <label>网格列数</label>
+      <input type="number" id="gridCols" value="50" min="10" max="120" style="width:70px">
+    </div>
+    <div class="grp">
+      <label>颜色数量</label>
+      <input type="range" id="colorCount" min="4" max="32" value="16" style="width:120px">
+      <span id="colorCountVal" style="font-size:13px;min-width:24px">16</span>
+    </div>
+    <div class="grp">
+      <label>显示色号</label>
+      <select id="showCodes">
+        <option value="1" selected>显示</option>
+        <option value="0">隐藏</option>
+      </select>
+    </div>
+    <div class="grp">
+      <label>网格线</label>
+      <select id="showGrid">
+        <option value="1" selected="selected">显示</option>
+        <option value="0">隐藏</option>
+      </select>
+    </div>
+    <div class="grp">
+      <button class="btn-sm" onclick="generate()">🔄 生成图纸</button>
+      <button class="btn-sm secondary" onclick="exportPNG()">💾 导出PNG</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="preview-panel">
+      <div class="stats" style="margin-bottom:12px">
+        <h3>原图预览</h3>
+        <canvas id="origCanvas" style="width:100%;border-radius:8px"></canvas>
+      </div>
+    </div>
+    <div class="result-panel">
+      <div class="stats" id="statsPanel">
+        <h3>📊 珠子用量统计</h3>
+        <div>总计：<span class="total" id="totalBeads">0</span> 颗</div>
+        <div class="color-list" id="colorList"></div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  精准拼豆图纸生成器 · 自助设计秒发 · 卡密自动发货系统
+</div>
+
+<div class="toast" id="toast"></div>
+
+</div>
+
+<script>
+// ============== Bead Color Palette ==============
+const PALETTE = [
+  {code:"A01",name:"纯白",r:255,g:255,b:255},
+  {code:"A02",name:"奶白",r:248,g:240,b:224},
+  {code:"A03",name:"浅灰",r:200,g:200,b:200},
+  {code:"A04",name:"深灰",r:128,g:128,b:128},
+  {code:"A05",name:"炭灰",r:80,g:80,b:80},
+  {code:"A06",name:"黑色",r:20,g:20,b:20},
+  {code:"B01",name:"大红",r:220,g:40,b:40},
+  {code:"B02",name:"深红",r:160,g:24,b:24},
+  {code:"B03",name:"酒红",r:128,g:16,b:32},
+  {code:"B04",name:"浅粉",r:255,g:192,b:203},
+  {code:"B05",name:"玫红",r:255,g:64,b:128},
+  {code:"B06",name:"肉粉",r:255,g:210,b:192},
+  {code:"B07",name:"珊瑚",r:255,g:128,b:128},
+  {code:"C01",name:"橙色",r:255,g:140,b:32},
+  {code:"C02",name:"橘黄",r:255,g:168,b:48},
+  {code:"C03",name:"金黄",r:255,g:200,b:48},
+  {code:"C04",name:"柠檬黄",r:255,g:232,b:80},
+  {code:"C05",name:"浅黄",r:255,g:248,b:168},
+  {code:"C06",name:"驼色",r:192,g:144,b:80},
+  {code:"C07",name:"棕色",r:128,g:80,b:32},
+  {code:"D01",name:"草绿",r:64,g:168,b:64},
+  {code:"D02",name:"翠绿",r:32,g:128,b:48},
+  {code:"D03",name:"深绿",r:24,g:96,b:40},
+  {code:"D04",name:"浅绿",r:128,g:216,b:128},
+  {code:"D05",name:"黄绿",r:168,g:216,b:64},
+  {code:"D06",name:"墨绿",r:32,g:64,b:32},
+  {code:"D07",name:"橄榄",r:96,g:120,b:48},
+  {code:"D08",name:"薄荷",r:152,g:240,b:200},
+  {code:"E01",name:"天蓝",r:96,g:168,b:224},
+  {code:"E02",name:"湖蓝",r:48,g:128,b:192},
+  {code:"E03",name:"深蓝",r:24,g:56,b:128},
+  {code:"E04",name:"藏青",r:16,g:32,b:80},
+  {code:"E05",name:"浅蓝",r:168,g:216,b:240},
+  {code:"E06",name:"宝蓝",r:0,g:96,b:200},
+  {code:"F01",name:"紫色",r:128,g:64,b:168},
+  {code:"F02",name:"深紫",r:80,g:32,b:128},
+  {code:"F03",name:"浅紫",r:192,g:160,b:224},
+  {code:"F04",name:"薰衣草",r:200,g:184,b:232},
+  {code:"F05",name:"梅紫",r:168,g:80,b:160},
+  {code:"G01",name:"肤色",r:240,g:200,b:168},
+  {code:"G02",name:"浅肤色",r:255,g:224,b:200},
+  {code:"G03",name:"深肤色",r:200,g:152,b:120},
+  {code:"G04",name:"焦糖",r:176,g:120,b:72},
+  {code:"H01",name:"咖啡",r:96,g:56,b:32},
+  {code:"H02",name:"深棕",r:64,g:40,b:24},
+  {code:"H03",name:"浅棕",r:160,g:112,b:72},
+  {code:"H04",name:"红棕",r:128,g:72,b:48},
+  {code:"H05",name:"栗色",r:112,g:64,b:40},
+  {code:"P01",name:"透明",r:250,g:250,b:250},
+  {code:"P03",name:"银灰",r:216,g:224,b:232},
+  {code:"T01",name:"荧光黄",r:255,g:240,b:0},
+];
+
+// Valid card keys (demo) — in real system these would be server-side
+const VALID_KEYS = ["XJ2024VIP","STRAWBERRY","PINDOU001","FANCYVIP","838652"];
+
+// ============== State ==============
+let sourceImg = null;
+let pixelData = []; // [{code,name,r,g,b}]
+let gridCols = 50;
+let gridRows = 50;
+let cellSize = 16;
+let currentPalette = []; // selected palette colors for this image
+
+// ============== Login ==============
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginKey').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
+
+function doLogin(){
+  const user=document.getElementById('loginUser').value.trim();
+  const key=document.getElementById('loginKey').value.trim();
+  if(VALID_KEYS.includes(key.toUpperCase())){
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    toast('✅ 登录成功，欢迎使用精准拼豆图纸生成器！');
+  }else{
+    const err=document.getElementById('loginErr');
+    err.style.display='block';
+    setTimeout(()=>err.style.display='none',3000);
+  }
+}
+
+// ============== UI Handlers ==============
+document.getElementById('fileInput').addEventListener('change',handleUpload);
+document.getElementById('colorCount').addEventListener('input',e=>{
+  document.getElementById('colorCountVal').textContent=e.target.value;
+});
+document.getElementById('gridCols').addEventListener('change',e=>{if(sourceImg)generate();});
+document.getElementById('showCodes').addEventListener('change',e=>{if(sourceImg)generate();});
+document.getElementById('showGrid').addEventListener('change',e=>{if(sourceImg)generate();});
+
+function handleUpload(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const img=new Image();
+    img.onload=function(){
+      sourceImg=img;
+      drawOrigPreview();
+      generate();
+      toast('✅ 图片加载成功！');
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function drawOrigPreview(){
+  const c=document.getElementById('origCanvas');
+  const ctx=c.getContext('2d');
+  const maxW=400;
+  const scale=Math.min(1,maxW/sourceImg.width);
+  c.width=sourceImg.width*scale;
+  c.height=sourceImg.height*scale;
+  ctx.drawImage(sourceImg,0,0,c.width,c.height);
+}
+
+// ============== Color Quantization ==============
+function rgbToLab(r,g,b){
+  // sRGB to XYZ
+  let rr=r/255,gg=g/255,bb=b/255;
+  rr=rr>0.04045?Math.pow((rr+0.055)/1.055,2.4):rr/12.92;
+  gg=gg>0.04045?Math.pow((gg+0.055)/1.055,2.4):gg/12.92;
+  bb=bb>0.04045?Math.pow((bb+0.055)/1.055,2.4):bb/12.92;
+  let x=(rr*0.4124+gg*0.3576+bb*0.1805)*100;
+  let y=(rr*0.2126+gg*0.7152+bb*0.0722)*100;
+  let z=(rr*0.0193+gg*0.1192+bb*0.9505)*100;
+  // XYZ to LAB (D65)
+  x/=95.047;y/=100;z/=108.883;
+  x=x>0.008856?Math.pow(x,1/3):(7.787*x+16/116);
+  y=y>0.008856?Math.pow(y,1/3):(7.787*y+16/116);
+  z=z>0.008856?Math.pow(z,1/3):(7.787*z+16/116);
+  return [116*y-16,500*(x-y),200*(y-z)];
+}
+
+function labDist(l1,l2){
+  return Math.sqrt(Math.pow(l1[0]-l2[0],2)+Math.pow(l1[1]-l2[1],2)+Math.pow(l1[2]-l2[2],2));
+}
+
+// Map an arbitrary RGB to the nearest palette color
+function nearestPalette(r,g,b,palette){
+  let best=palette[0],bestD=Infinity;
+  const lab=rgbToLab(r,g,b);
+  for(const c of palette){
+    const cl=rgbToLab(c.r,c.g,c.b);
+    const d=labDist(lab,cl);
+    if(d<bestD){bestD=d;best=c;}
+  }
+  return best;
+}
+
+// Median cut quantization to select N palette colors from the image
+function medianCut(pixels,numColors){
+  if(pixels.length===0)return[];
+  if(numColors>=pixels.length)return pixels.map(p=>({r:p[0],g:p[1],b:p[2]}));
+  
+  function box(pxs){
+    this.pixels=pxs;
+    this.getColor=()=>{
+      let r=0,g=0,b=0;
+      for(const p of pxs){r+=p[0];g+=p[1];b+=p[2];}
+      return {r:Math.round(r/pxs.length),g:Math.round(g/pxs.length),b:Math.round(b/pxs.length)};
+    };
+    this.getLongestChannel=()=>{
+      let rMin=255,rMax=0,gMin=255,gMax=0,bMin=255,bMax=0;
+      for(const p of pxs){
+        rMin=Math.min(rMin,p[0]);rMax=Math.max(rMax,p[0]);
+        gMin=Math.min(gMin,p[1]);gMax=Math.max(gMax,p[1]);
+        bMin=Math.min(bMin,p[2]);bMax=Math.max(bMax,p[2]);
+      }
+      const rR=rMax-rMin,gR=gMax-gMin,bR=bMax-bMin;
+      if(rR>=gR&&rR>=bR)return 0;
+      if(gR>=rR&&gR>=bR)return 1;
+      return 2;
+    };
+  }
+  
+  let boxes=[new box(pixels)];
+  while(boxes.length<numColors){
+    boxes.sort((a,b)=>{
+      // Sort by range (max-min) of longest channel as priority
+      return b.pixels.length-a.pixels.length;
+    });
+    let target=boxes[0];
+    if(target.pixels.length<2)break;
+    const ch=target.getLongestChannel();
+    target.pixels.sort((a,b)=>a[ch]-b[ch]);
+    const mid=Math.floor(target.pixels.length/2);
+    const left=new box(target.pixels.slice(0,mid));
+    const right=new box(target.pixels.slice(mid));
+    boxes.shift();
+    if(left.pixels.length>0)boxes.push(left);
+    if(right.pixels.length>0)boxes.push(right);
+  }
+  return boxes.map(b=>b.getColor());
+}
+
+// ============== Pixelation + Map to Palette ==============
+function generate(){
+  if(!sourceImg){
+    toast('⚠️ 请先上传图片');
+    return;
+  }
+  gridCols=parseInt(document.getElementById('gridCols').value)||50;
+  const numColors=parseInt(document.getElementById('colorCount').value)||16;
+  
+  // Calculate grid rows based on aspect ratio
+  const aspect=sourceImg.height/sourceImg.width;
+  gridRows=Math.round(gridCols*aspect);
+  if(gridRows>120)gridRows=120;
+  
+  // Sample the image to grid resolution
+  const sampleCanvas=document.createElement('canvas');
+  const sctx=sampleCanvas.getContext('2d');
+  sampleCanvas.width=gridCols;
+  sampleCanvas.height=gridRows;
+  sctx.drawImage(sourceImg,0,0,gridCols,gridRows);
+  const imgData=sctx.getImageData(0,0,gridCols,gridRows);
+  
+  // Collect pixels for quantization
+  const allPixels=[];
+  const pixelRGB=[];
+  for(let y=0;y<gridRows;y++){
+    const row=[];
+    for(let x=0;x<gridCols;x++){
+      const i=(y*gridCols+x)*4;
+      const r=imgData.data[i],g=imgData.data[i+1],b=imgData.data[i+2],a=imgData.data[i+3];
+      if(a<128){row.push(null);continue;}
+      allPixels.push([r,g,b]);
+      row.push([r,g,b]);
+    }
+    pixelRGB.push(row);
+  }
+  
+  // Quantize to N representative colors
+  const repColors=medianCut(allPixels,numColors);
+  
+  // Map each representative color to nearest bead palette color
+  currentPalette=repColors.map(c=>nearestPalette(c.r,c.g,c.b,PALETTE));
+  
+  // Deduplicate palette
+  const seen={};
+  currentPalette=currentPalette.filter(c=>{
+    if(seen[c.code])return false;
+    seen[c.code]=true;return true;
+  });
+  
+  // Build pixel grid with bead codes
+  pixelData=[];
+  for(let y=0;y<gridRows;y++){
+    const row=[];
+    for(let x=0;x<gridCols;x++){
+      const px=pixelRGB[y][x];
+      if(!px){row.push(null);continue;}
+      row.push(nearestPalette(px[0],px[1],px[2],currentPalette));
+    }
+    pixelData.push(row);
+  }
+  
+  renderChart();
+  renderStats();
+}
+
+// ============== Render Chart ==============
+function renderChart(){
+  const showCodes=document.getElementById('showCodes').value==='1';
+  const showGrid=document.getElementById('showGrid').value==='1';
+  
+  const c=document.getElementById('chartCanvas');
+  const ctx=c.getContext('2d');
+  
+  const rulerSize=30;
+  const baseCell=16;
+  const w=gridCols*baseCell+rulerSize+4;
+  const h=gridRows*baseCell+rulerSize+4;
+  c.width=w;
+  c.height=h;
+  
+  // Background
+  ctx.fillStyle='#111';
+  ctx.fillRect(0,0,w,h);
+  
+  // Rulers
+  ctx.fillStyle='#333';
+  ctx.fillRect(0,0,rulerSize,h);
+  ctx.fillRect(0,0,w,rulerSize);
+  
+  ctx.fillStyle='#fff';
+  ctx.font='10px sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  
+  // Column numbers (every 5)
+  for(let x=0;x<gridCols;x++){
+    if(x%5===0||x===gridCols-1){
+      ctx.fillText(x+1,rulerSize+x*baseCell+baseCell/2,rulerSize/2);
+    }
+    if(showGrid&&x%5===0&&x>0){
+      ctx.strokeStyle='rgba(255,255,255,.15)';
+      ctx.lineWidth=0.5;
+      ctx.beginPath();
+      ctx.moveTo(rulerSize+x*baseCell,rulerSize);
+      ctx.lineTo(rulerSize+x*baseCell,h);
+      ctx.stroke();
+    }
+  }
+  // Row numbers (every 5)
+  ctx.textAlign='right';
+  for(let y=0;y<gridRows;y++){
+    if(y%5===0||y===gridRows-1){
+      ctx.fillText(y+1,rulerSize-4,rulerSize+y*baseCell+baseCell/2);
+    }
+    if(showGrid&&y%5===0&&y>0){
+      ctx.strokeStyle='rgba(255,255,255,.15)';
+      ctx.lineWidth=0.5;
+      ctx.beginPath();
+      ctx.moveTo(rulerSize,rulerSize+y*baseCell);
+      ctx.lineTo(w,rulerSize+y*baseCell);
+      ctx.stroke();
+    }
+  }
+  
+  // Draw cells
+  ctx.textAlign='center';
+  for(let y=0;y<gridRows;y++){
+    for(let x=0;x<gridCols;x++){
+      const px=pixelData[y][x];
+      const cx=rulerSize+x*baseCell;
+      const cy=rulerSize+y*baseCell;
+      if(px){
+        ctx.fillStyle=`rgb(${px.r},${px.g},${px.b})`;
+        ctx.fillRect(cx,cy,baseCell,baseCell);
+        if(showCodes){
+          // Auto text color for contrast
+          const lum=(0.299*px.r+0.587*px.g+0.114*px.b);
+          ctx.fillStyle=lum>140?'#000':'#fff';
+          ctx.font='7px sans-serif';
+          ctx.fillText(px.code,cx+baseCell/2,cy+baseCell/2);
+        }
+      }else{
+        // Transparent cell
+        ctx.fillStyle='#1a1a1a';
+        ctx.fillRect(cx,cy,baseCell,baseCell);
+      }
+    }
+  }
+  
+  // Grid lines
+  if(showGrid){
+    ctx.strokeStyle='rgba(255,255,255,.08)';
+    ctx.lineWidth=0.5;
+    for(let x=0;x<=gridCols;x++){
+      ctx.beginPath();
+      ctx.moveTo(rulerSize+x*baseCell,rulerSize);
+      ctx.lineTo(rulerSize+x*baseCell,rulerSize+gridRows*baseCell);
+      ctx.stroke();
+    }
+    for(let y=0;y<=gridRows;y++){
+      ctx.beginPath();
+      ctx.moveTo(rulerSize,rulerSize+y*baseCell);
+      ctx.lineTo(rulerSize+gridCols*baseCell,rulerSize+y*baseCell);
+      ctx.stroke();
+    }
+  }
+}
+
+// ============== Stats ==============
+function renderStats(){
+  const counts={};
+  let total=0;
+  for(let y=0;y<gridRows;y++){
+    for(let x=0;x<gridCols;x++){
+      const px=pixelData[y][x];
+      if(!px)continue;
+      if(!counts[px.code])counts[px.code]={count:0,name:px.name,r:px.r,g:px.g,b:px.b};
+      counts[px.code].count++;
+      total++;
+    }
+  }
+  
+  document.getElementById('totalBeads').textContent=total;
+  
+  // Sort by count descending
+  const sorted=Object.entries(counts).sort((a,b)=>b[1].count-a[1].count);
+  
+  const list=document.getElementById('colorList');
+  list.innerHTML=sorted.map(([code,d])=>`
+    <div class="color-item">
+      <div class="color-swatch" style="background:rgb(${d.r},${d.g},${d.b})"></div>
+      <span><b>${code}</b> ${d.name} <span class="count">${d.count}颗</span></span>
+    </div>
+  `).join('');
+}
+
+// ============== Export PNG ==============
+function exportPNG(){
+  // High-resolution print-quality export
+  const showCodes=document.getElementById('showCodes').value==='1';
+  const showGrid=document.getElementById('showGrid').value==='1';
+  const hiCell=40; // High-res cell size
+  const rulerSize=70;
+  const margin=60;
+  const chartW=gridCols*hiCell;
+  const chartH=gridRows*hiCell;
+  
+  // Collect stats
+  const counts={};
+  let total=0;
+  for(let y=0;y<gridRows;y++){
+    for(let x=0;x<gridCols;x++){
+      const px=pixelData[y][x];
+      if(!px)continue;
+      if(!counts[px.code])counts[px.code]={count:0,name:px.name,r:px.r,g:px.g,b:px.b};
+      counts[px.code].count++;total++;
+    }
+  }
+  const sorted=Object.entries(counts).sort((a,b)=>b[1].count-a[1].count);
+  
+  const legendRows=Math.ceil(sorted.length/4);
+  const legendH=legendRows*40+60;
+  const titleH=80;
+  
+  const W=chartW+rulerSize+margin*2;
+  const H=titleH+chartH+rulerSize+legendH+margin;
+  
+  const c=document.createElement('canvas');
+  c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  
+  // White background
+  ctx.fillStyle='#fff';
+  ctx.fillRect(0,0,W,H);
+  
+  // Title bar
+  ctx.fillStyle='#7c3aed';
+  const titleX=margin,titleY=20,titleW=W-margin*2,titleBH=50;
+  ctx.beginPath();
+  ctx.roundRect(titleX,titleY,titleW,titleBH,12);
+  ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.font='bold 28px sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText('拼豆图纸生成工具',W/2,titleY+titleBH/2);
+  
+  const offsetY=titleH;
+  
+  // Ruler background
+  ctx.fillStyle='#444';
+  ctx.fillRect(margin,offsetY,rulerSize,chartH);
+  ctx.fillRect(margin,offsetY,chartW+rulerSize,rulerSize);
+  
+  ctx.fillStyle='#fff';
+  ctx.font='14px sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  for(let x=0;x<gridCols;x++){
+    if(x%5===0||x===gridCols-1){
+      ctx.fillText(x+1,margin+rulerSize+x*hiCell+hiCell/2,offsetY+rulerSize/2);
+    }
+  }
+  ctx.textAlign='right';
+  for(let y=0;y<gridRows;y++){
+    if(y%5===0||y===gridRows-1){
+      ctx.fillText(y+1,margin+rulerSize-6,offsetY+rulerSize+y*hiCell+hiCell/2);
+    }
+  }
+  
+  // Draw cells
+  ctx.textAlign='center';
+  for(let y=0;y<gridRows;y++){
+    for(let x=0;x<gridCols;x++){
+      const px=pixelData[y][x];
+      const cx=margin+rulerSize+x*hiCell;
+      const cy=offsetY+rulerSize+y*hiCell;
+      if(px){
+        ctx.fillStyle=`rgb(${px.r},${px.g},${px.b})`;
+        ctx.fillRect(cx,cy,hiCell,hiCell);
+        if(showCodes){
+          const lum=(0.299*px.r+0.587*px.g+0.114*px.b);
+          ctx.fillStyle=lum>140?'#000':'#fff';
+          ctx.font='14px sans-serif';
+          ctx.fillText(px.code,cx+hiCell/2,cy+hiCell/2);
+        }
+      }else{
+        ctx.fillStyle='#eee';
+        ctx.fillRect(cx,cy,hiCell,hiCell);
+      }
+    }
+  }
+  
+  // Grid lines
+  if(showGrid){
+    ctx.strokeStyle='rgba(0,0,0,.3)';
+    ctx.lineWidth=0.5;
+    for(let x=0;x<=gridCols;x++){
+      ctx.beginPath();
+      ctx.moveTo(margin+rulerSize+x*hiCell,offsetY+rulerSize);
+      ctx.lineTo(margin+rulerSize+x*hiCell,offsetY+rulerSize+chartH);
+      ctx.stroke();
+    }
+    for(let y=0;y<=gridRows;y++){
+      ctx.beginPath();
+      ctx.moveTo(margin+rulerSize,offsetY+rulerSize+y*hiCell);
+      ctx.lineTo(margin+rulerSize+chartW,offsetY+rulerSize+y*hiCell);
+      ctx.stroke();
+    }
+    // Thicker lines every 5
+    ctx.strokeStyle='rgba(0,0,0,.6)';
+    ctx.lineWidth=1.5;
+    for(let x=0;x<=gridCols;x+=5){
+      ctx.beginPath();
+      ctx.moveTo(margin+rulerSize+x*hiCell,offsetY+rulerSize);
+      ctx.lineTo(margin+rulerSize+x*hiCell,offsetY+rulerSize+chartH);
+      ctx.stroke();
+    }
+    for(let y=0;y<=gridRows;y+=5){
+      ctx.beginPath();
+      ctx.moveTo(margin+rulerSize,offsetY+rulerSize+y*hiCell);
+      ctx.lineTo(margin+rulerSize+chartW,offsetY+rulerSize+y*hiCell);
+      ctx.stroke();
+    }
+  }
+  
+  // Legend
+  const legendY=offsetY+rulerSize+chartH+30;
+  ctx.fillStyle='#333';
+  ctx.font='bold 18px sans-serif';
+  ctx.textAlign='left';
+  ctx.fillText('珠子用量统计表',margin,legendY);
+  ctx.font='16px sans-serif';
+  ctx.fillText('总计：'+total+' 颗',margin+220,legendY);
+  
+  let col=0,row=0;
+  for(const [code,d] of sorted){
+    const lx=margin+col*240;
+    const ly=legendY+30+row*40;
+    ctx.fillStyle=`rgb(${d.r},${d.g},${d.b})`;
+    ctx.fillRect(lx,ly,28,28);
+    ctx.strokeStyle='#ccc';
+    ctx.strokeRect(lx,ly,28,28);
+    ctx.fillStyle='#333';
+    ctx.font='14px sans-serif';
+    ctx.textAlign='left';
+    ctx.textBaseline='middle';
+    ctx.fillText(code+' '+d.name+'  '+d.count+'颗',lx+36,ly+14);
+    col++;
+    if(col>=4){col=0;row++;}
+  }
+  
+  const link=document.createElement('a');
+  link.download='拼豆图纸_'+gridCols+'x'+gridRows+'_高清.png';
+  link.href=c.toDataURL('image/png');
+  link.click();
+  toast('✅ 高清图纸已导出！');
+}
+
+// ============== Toast ==============
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// Demo: pre-load login hint
+document.getElementById('loginUser').value='';
+</script>
+</body>
+</html>
