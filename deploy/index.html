@@ -69,25 +69,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .toast.show{opacity:1}
 
 .hidden{display:none!important}
-/* Tabs */
-.tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
-.tab{padding:10px 18px;border:1px solid var(--border);background:var(--card2);border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;color:var(--text2)}
-.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
-/* Remove-color list */
-.rc-list{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:12px}
-.rc-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card2);border-radius:8px;cursor:pointer;transition:.2s}
-.rc-item:hover{border:1px solid var(--accent)}
-.rc-swatch{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.2);flex-shrink:0}
-.rc-info{flex:1;font-size:13px}
-.rc-count{font-weight:600;color:var(--accent2)}
-.rc-del{color:var(--err);font-size:18px;cursor:pointer;padding:4px 8px}
-/* Brand/count pills */
-.pill-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.pill{padding:6px 14px;border:1px solid var(--border);background:var(--card2);border-radius:20px;font-size:13px;cursor:pointer;color:var(--text2)}
-.pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.section-label{font-size:13px;color:var(--text2);margin:12px 0 4px;font-weight:600}
 
 .footer{text-align:center;color:var(--text2);font-size:12px;padding:20px 0;margin-top:20px}
 </style>
@@ -164,56 +145,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
       </div>
     </div>
     <div class="result-panel">
-      <div class="tabs">
-        <div class="tab active" onclick="switchTab('chart')">📊 图纸</div>
-        <div class="tab" onclick="switchTab('remove')">🎨 去除杂色</div>
-        <div class="tab" onclick="switchTab('palette')">📋 色板与导出</div>
+      <div class="stats" id="statsPanel">
+        <h3>📊 珠子用量统计</h3>
+        <div>总计：<span class="total" id="totalBeads">0</span> 颗</div>
+        <div class="color-list" id="colorList"></div>
       </div>
-      <div class="tab-panel active" id="tab-chart">
-        <div class="stats" id="statsPanel">
-          <h3>📊 珠子用量统计</h3>
-          <div>总计：<span class="total" id="totalBeads">0</span> 颗</div>
-          <div class="color-list" id="colorList"></div>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="chartCanvas"></canvas>
-        </div>
-      </div>
-      <div class="tab-panel" id="tab-remove">
-        <div class="stats">
-          <h3>🎨 去除杂色</h3>
-          <div style="font-size:13px;color:var(--text2);margin:8px 0">当前共计颜色数量：<span id="rcColorCount">0</span> 个</div>
-          <div style="font-size:13px;color:var(--text2)">点击颜色自动合并到项目中最接近的已有颜色。总计：<span id="rcTotal">0</span> 颗</div>
-          <div class="rc-list" id="rcList"></div>
-        </div>
-      </div>
-      <div class="tab-panel" id="tab-palette">
-        <div class="stats">
-          <h3>📋 色板与导出 <span style="float:right;font-size:13px;color:var(--text2)">可用色 <span id="availColors">52</span></span></h3>
-          <div class="section-label">品牌:</div>
-          <div class="pill-row" id="brandRow">
-            <div class="pill active" onclick="selectBrand(this,'MARD')">MARD</div>
-            <div class="pill" onclick="selectBrand(this,'COCO')">COCO</div>
-            <div class="pill" onclick="selectBrand(this,'ManMan')">ManMan</div>
-            <div class="pill" onclick="selectBrand(this,'PanPan')">PanPan</div>
-            <div class="pill" onclick="selectBrand(this,'MiXiaoWo')">MiXiaoWo</div>
-          </div>
-          <div class="section-label">色号:</div>
-          <div class="pill-row" id="countRow">
-            <div class="pill" onclick="selectCount(this,291)">291色</div>
-            <div class="pill active" onclick="selectCount(this,52)">52色</div>
-            <div class="pill" onclick="selectCount(this,144)">144色</div>
-            <div class="pill" onclick="selectCount(this,120)">120色</div>
-            <div class="pill" onclick="selectCount(this,96)">96色</div>
-            <div class="pill" onclick="selectCount(this,72)">72色</div>
-            <div class="pill" onclick="selectCount(this,48)">48色</div>
-            <div class="pill" onclick="selectCount(this,24)">24色</div>
-          </div>
-          <div style="display:flex;gap:12px;margin-top:20px">
-            <button class="btn2" style="flex:1" onclick="toast('色板管理功能：当前色卡已加载 '+currentPalette.length+' 色')">🎨 色板管理</button>
-            <button class="btn" style="flex:1" onclick="exportPNG()">💾 下载图纸</button>
-          </div>
-        </div>
+      <div class="chart-wrap">
+        <canvas id="chartCanvas"></canvas>
       </div>
     </div>
   </div>
@@ -787,101 +725,6 @@ function exportPNG(){
   link.href=c.toDataURL('image/png');
   link.click();
   toast('✅ 高清图纸已导出！');
-}
-
-// ============== Tab Switching ==============
-function switchTab(name){
-  document.querySelectorAll('.tab').forEach((t,i)=>{
-    const panels=['chart','remove','palette'];
-    t.classList.toggle('active',panels[i]===name);
-  });
-  document.getElementById('tab-chart').classList.toggle('active',name==='chart');
-  document.getElementById('tab-remove').classList.toggle('active',name==='remove');
-  document.getElementById('tab-palette').classList.toggle('active',name==='palette');
-  if(name==='remove')renderRemoveColors();
-  if(name==='palette')updateAvailColors();
-}
-
-// ============== Remove Impurity Colors ==============
-function renderRemoveColors(){
-  const counts={};
-  let total=0;
-  for(let y=0;y<gridRows;y++){
-    for(let x=0;x<gridCols;x++){
-      const px=pixelData[y][x];
-      if(!px)continue;
-      if(!counts[px.code])counts[px.code]={count:0,name:px.name,r:px.r,g:px.g,b:px.b};
-      counts[px.code].count++;total++;
-    }
-  }
-  const sorted=Object.entries(counts).sort((a,b)=>b[1].count-a[1].count);
-  document.getElementById('rcColorCount').textContent=sorted.length;
-  document.getElementById('rcTotal').textContent=total;
-  const list=document.getElementById('rcList');
-  list.innerHTML=sorted.map(([code,d])=>`
-    <div class="rc-item" onclick="mergeColor('${code}')">
-      <div class="rc-swatch" style="background:rgb(${d.r},${d.g},${d.b})"></div>
-      <div class="rc-info"><b>${code}</b> ${d.name}</div>
-      <div class="rc-count">${d.count}颗</div>
-      <div class="rc-del" onclick="mergeColor('${code}');event.stopPropagation()">✕</div>
-    </div>
-  `).join('');
-}
-
-// Merge a color into the nearest other color in the palette
-function mergeColor(code){
-  // Find the color object being removed
-  let target=null;
-  for(const c of currentPalette){if(c.code===code){target=c;break;}}
-  if(!target){toast('⚠️ 找不到色号 '+code);return;}
-  // Find nearest other color in palette
-  let best=null,bestD=Infinity;
-  const labT=rgbToLab(target.r,target.g,target.b);
-  for(const c of currentPalette){
-    if(c.code===code)continue;
-    const d=labDist(labT,rgbToLab(c.r,c.g,c.b));
-    if(d<bestD){bestD=d;best=c;}
-  }
-  if(!best){toast('⚠️ 没有其他颜色可合并');return;}
-  // Replace all instances
-  let replaced=0;
-  for(let y=0;y<gridRows;y++){
-    for(let x=0;x<gridCols;x++){
-      if(pixelData[y][x]&&pixelData[y][x].code===code){
-        pixelData[y][x]=best;replaced++;
-      }
-    }
-  }
-  // Remove from palette
-  currentPalette=currentPalette.filter(c=>c.code!==code);
-  renderChart();
-  renderStats();
-  renderRemoveColors();
-  toast(`✅ ${code} 已合并到 ${best.code}（${best.name}），共替换 ${replaced} 颗`);
-}
-
-// ============== Brand & Color Count ==============
-let selectedBrand='MARD';
-let selectedCount=52;
-
-function selectBrand(el,brand){
-  document.querySelectorAll('#brandRow .pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  selectedBrand=brand;
-  toast('品牌已切换：'+brand);
-  updateAvailColors();
-}
-
-function selectCount(el,count){
-  document.querySelectorAll('#countRow .pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  selectedCount=count;
-  if(sourceImg){generate();}
-  updateAvailColors();
-}
-
-function updateAvailColors(){
-  document.getElementById('availColors').textContent=selectedCount;
 }
 
 // ============== Toast ==============
