@@ -285,7 +285,7 @@ const PALETTE = [
 ];
 
 // Valid card keys (demo) — in real system these would be server-side
-const VALID_KEYS = ["XJ2024VIP","STRAWBERRY","PINDOU001","FANCYVIP","838652"];
+const VALID_KEYS = ["67890"];
 
 // ============== State ==============
 let sourceImg = null;
@@ -302,7 +302,7 @@ document.getElementById('loginKey').addEventListener('keydown', e=>{if(e.key==='
 function doLogin(){
   const user=document.getElementById('loginUser').value.trim();
   const key=document.getElementById('loginKey').value.trim();
-  if(VALID_KEYS.includes(key.toUpperCase())){
+  if(user==="123456" && key==="67890"){
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     toast('✅ 登录成功，欢迎使用精准拼豆图纸生成器！');
